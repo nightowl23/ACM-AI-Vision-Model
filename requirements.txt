@@ -1,2 +1,23 @@
-openai==1.2.0
-tqdm
+# --- Core Google Gemini client ---
+google-generativeai>=0.7.0
+
+# --- Image loading ---
+Pillow>=10.2.0
+
+# --- Progress bars ---
+tqdm>=4.66.1
+
+# --- Text similarity metric for evaluation (BERTScore) ---
+bert-score>=0.3.13
+transformers>=4.38.0
+torch>=2.1.0
+
+# --- Async support (optional but recommended) ---
+aiohttp>=3.9.3
+aiosignal>=1.3.1
+
+# --- JSONL support ---
+jsonlines>=4.0.0
+
+# --- Utilities ---
+numpy>=1.26.0
