@@ -20,6 +20,21 @@ def load_jsonl(path: Path):
     return records
 
 
+def extract_top_category(path_string: str):
+    """
+    Extract top-level category from path.
+    Example:
+        '/t2i/cor/0.png' -> 't2i'
+        '/i2i/interference/3.png' -> 'i2i'
+        '/OCR/japanese/4.png' -> 'OCR'
+        '/factual/factual/7.png' -> 'factual'
+        '/Region/south asia/8.png' -> 'Region'
+    """
+    path_string = path_string.strip("/")
+    parts = path_string.split("/")
+    return parts[0] if parts else "unknown"
+
+
 def compute_bertscore(records, model_type="microsoft/deberta-large-mnli"):
     """
     Compute BERTScore precision/recall/F1 over all items.
@@ -28,7 +43,6 @@ def compute_bertscore(records, model_type="microsoft/deberta-large-mnli"):
     candidates = [r["answer"] for r in records]
     references = [r["ground truth"] for r in records]
 
-    # BERTScore returns three tensors
     P, R, F1 = bert_score(
         cands=candidates,
         refs=references,
@@ -37,13 +51,16 @@ def compute_bertscore(records, model_type="microsoft/deberta-large-mnli"):
         verbose=True
     )
 
-    # Attach scores to each record
     results = []
     for rec, p, r, f in zip(records, P, R, F1):
         out = rec.copy()
         out["bertscore_precision"] = float(p)
         out["bertscore_recall"] = float(r)
         out["bertscore_f1"] = float(f)
+
+        # Add top-level category extracted from path
+        out["top_category"] = extract_top_category(rec["path"])
+
         results.append(out)
 
     return results
@@ -51,20 +68,30 @@ def compute_bertscore(records, model_type="microsoft/deberta-large-mnli"):
 
 def save_results(results, output_jsonl: Path, summary_csv: Path):
     """Save detailed JSONL and summary CSV."""
-    # Save detailed per-item scores
     with output_jsonl.open("w", encoding="utf-8") as f:
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    # Build summary CSV
     df = pd.DataFrame(results)
-    summary = df[["bertscore_precision", "bertscore_recall", "bertscore_f1"]].mean()
 
-    summary.to_csv(summary_csv, header=["mean_score"])
+    # === GLOBAL SUMMARY ===
+    overall_summary = df[["bertscore_precision", "bertscore_recall", "bertscore_f1"]].mean()
+    overall_summary.to_csv(summary_csv, header=["mean_score"])
 
-    print("\n=== BERTScore Summary ===")
-    print(summary)
-    print("=========================\n")
+    print("\n=== OVERALL BERTScore Summary ===")
+    print(overall_summary)
+    print("=================================\n")
+
+    # === TOP-LEVEL CATEGORY SUMMARY ===
+    category_summary = df.groupby("top_category")[
+        ["bertscore_precision", "bertscore_recall", "bertscore_f1"]
+    ].mean()
+
+    category_summary.to_csv("bertscore_by_top_category.csv")
+
+    print("=== BERTScore by Top-Level Category ===")
+    print(category_summary)
+    print("=======================================\n")
 
 
 def main():
