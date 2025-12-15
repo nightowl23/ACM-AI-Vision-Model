@@ -1,0 +1,4 @@
+,mean_score
+bertscore_precision,0.579623303714801
+bertscore_recall,0.5019410038931351
+bertscore_f1,0.5282459498354883
